@@ -13,6 +13,8 @@ const setupSocket = require('./socket/socketHandler');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
+const placeRoutes = require('./routes/placeRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -39,6 +41,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/places', placeRoutes);
+app.use('/api/user', userRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
