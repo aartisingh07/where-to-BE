@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 const Message = require('../models/Message');
+const setupVotingHandler = require('./votingHandler');
+const setupTimerHandler = require('./timerHandler');
+const setupOutingHandler = require('./outingHandler');
 
 // Map: roomId → Set of { socketId, userId, username, avatar }
 const roomUsers = new Map();
@@ -23,23 +26,36 @@ const getRoomUsers = (roomId) => {
 
 const setupSocket = (io) => {
   // Auth middleware — verify JWT on every socket connection
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Authentication error: no token'));
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       socket.userId = decoded.id;
-      socket.username = decoded.username;
-      socket.avatar = decoded.avatar || '';
+
+      // Fetch user from DB to get up-to-date username and avatar
+      const User = require('../models/User');
+      const user = await User.findById(decoded.id).select('username avatar');
+      if (!user) {
+        return next(new Error('Authentication error: user not found'));
+      }
+
+      socket.username = user.username;
+      socket.avatar = user.avatar || '';
       next();
-    } catch {
+    } catch (err) {
       next(new Error('Authentication error: invalid token'));
     }
   });
 
   io.on('connection', (socket) => {
     console.log(`🔌 Socket connected: ${socket.username} (${socket.id})`);
+
+    // Wire voting, timer, and outing handlers
+    setupVotingHandler(socket, io);
+    setupTimerHandler(socket, io);
+    setupOutingHandler(socket, io);
 
     // ── Join Room ──────────────────────────────────────────
     socket.on('join-room', async ({ roomId }) => {

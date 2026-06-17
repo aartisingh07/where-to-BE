@@ -16,6 +16,7 @@ const authRoutes = require('./routes/authRoutes');
 const placeRoutes = require('./routes/placeRoutes');
 const userRoutes = require('./routes/userRoutes');
 const roomRoutes = require('./routes/roomRoutes');
+const movieRoutes = require('./routes/movieRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -45,6 +46,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/places', placeRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/movies', movieRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
