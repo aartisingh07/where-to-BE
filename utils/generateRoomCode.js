@@ -1,17 +1,19 @@
-const crypto = require('crypto');
+const Room = require('../models/Room');
 
-/**
- * Generate a unique 6-character room code (uppercase alphanumeric).
- * Avoids ambiguous characters: 0, O, I, L, 1
- */
-const generateRoomCode = () => {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  let code = '';
-  const bytes = crypto.randomBytes(6);
-  for (let i = 0; i < 6; i++) {
-    code += chars[bytes[i] % chars.length];
+const generateRoomCode = async () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No confusing chars (0,O,I,1)
+  let code;
+  let exists = true;
+
+  while (exists) {
+    code = Array.from({ length: 6 }, () =>
+      chars[Math.floor(Math.random() * chars.length)]
+    ).join('');
+
+    exists = await Room.findOne({ code, isActive: true });
   }
+
   return code;
 };
 
-module.exports = generateRoomCode;
+module.exports = { generateRoomCode };
