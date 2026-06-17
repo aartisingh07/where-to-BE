@@ -1,17 +1,17 @@
 # 🗺️ Where To? — Backend
 
-> REST API & real-time WebSocket server for the **Where To?** platform — a collaborative room-based app where users can create, join, and explore rooms in real time.
+> REST API & real-time WebSocket server for the **Where To?** platform — a collaborative room-based social app where groups can chat, vote on multiplayer games, discover movies with streaming availability, run synced Pomodoro sessions, and plan outings based on location midpoints.
 
 ---
 
 ## ✨ Features
 
-- 🔐 **JWT Authentication** — Secure register/login with hashed passwords
-- 🧠 **MongoDB Atlas** — Cloud-hosted NoSQL database
-- 📡 **Socket.io** — Real-time bidirectional communication
-- 🛡️ **Middleware** — Auth guards, error handling
-- 🌐 **CORS-ready** — Configured for frontend integration
-- 🔁 **RESTful API** — Clean, structured API routes
+- 🔐 **JWT Authentication** — Secure user register, login, and profile tracking using bcryptjs and auto-generated DiceBear avatars.
+- 📡 **Real-Time WebSockets (Socket.io)** — Secure token verification on handshake and modular event handlers for room activities.
+- 🎮 **Generic Proposal & Voting Engine** — Real-time Yes/No/Maybe voting tally systems with 30s auto-expiry.
+- 🎬 **TMDB Discover & Providers** — Advanced movie discover aggregation mapping moods and query parameters, falling back to a local catalog, and fetching watch provider platforms.
+- 📍 **Midpoint Centroid Calculations** — Group coordinates midpoint aggregation to fetch fair nearby destinations using Geoapify Places API.
+- ⏱️ **Synchronized Timers** — Centralized tick emitter managing room-wide Pomodoro timers.
 
 ---
 
@@ -19,15 +19,14 @@
 
 | Technology | Purpose |
 |---|---|
-| Node.js | Runtime environment |
-| Express.js | Web framework |
-| MongoDB Atlas | Cloud database |
-| Mongoose | MongoDB ODM |
-| Socket.io | Real-time events |
-| JWT | Authentication tokens |
-| bcryptjs | Password hashing |
-| dotenv | Environment config |
-| nodemon | Dev auto-restart |
+| Node.js | JS runtime environment |
+| Express.js | Backend REST API framework |
+| MongoDB Atlas | Cloud database persistence |
+| Mongoose | Object Data Modeling (ODM) |
+| Socket.io | Bidirectional real-time messaging |
+| JWT | Session authentication tokens |
+| bcryptjs | Password hashing and verification |
+| Axios | External API requests (Geoapify, TMDB) |
 
 ---
 
@@ -36,19 +35,25 @@
 ```
 backend/
 ├── config/
-│   └── db.js                  # MongoDB connection
+│   └── db.js                  # MongoDB database connection
 ├── controllers/               # Route handler logic
+│   ├── authController.js      # Register, login, session details
+│   ├── placeController.js     # Geoapify place finder
+│   ├── roomController.js      # Room creation, joining, and deactivation
+│   └── movieController.js     # TMDB movie discovery and watch providers
 ├── middleware/
-│   └── errorHandler.js        # Global error handler
-├── models/                    # Mongoose schemas
-├── routes/
-│   └── authRoutes.js          # Auth endpoints
-├── socket/
-│   └── socketHandler.js       # Socket.io event logic
-├── utils/                     # Utility/helper functions
+│   ├── authMiddleware.js      # JWT token guard and user payload mapping
+│   └── errorHandler.js        # Global error interceptor
+├── models/                    # Mongoose schemas (User, Room, Message, SavedPlace)
+├── routes/                    # API route definitions
+├── socket/                    # Real-time event handlers
+│   ├── socketHandler.js       # Core socket connection & chat listener
+│   ├── votingHandler.js       # Game, movie, and outing group voting
+│   ├── timerHandler.js        # Synchronized room Pomodoro timer
+│   └── outingHandler.js       # Location aggregation & midpoint search
+├── utils/                     # Helper functions (code generator)
 ├── server.js                  # App entry point
-├── package.json
-└── .env                       # Environment variables (not pushed)
+└── package.json
 ```
 
 ---
@@ -57,12 +62,13 @@ backend/
 
 ### Prerequisites
 - Node.js v18+
-- MongoDB Atlas account & cluster
+- MongoDB database (local instance or MongoDB Atlas cluster URI)
+- External API keys (Geoapify API, TMDB API)
 
 ### Installation
 
 ```bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/aartisingh07/where-to-BE.git
 cd where-to-BE
 
@@ -72,50 +78,90 @@ npm install
 
 ### Environment Variables
 
-Create a `.env` file in the root:
+Create a `.env` file in the root directory:
 
 ```env
 PORT=5000
-MONGO_URI=your_mongodb_atlas_connection_string
-JWT_SECRET=your_jwt_secret_key
+MONGODB_URI=your_mongodb_atlas_connection_string
+JWT_SECRET=your_jwt_secret_key_here
 CLIENT_URL=http://localhost:5173
 NODE_ENV=development
+GEOAPIFY_API_KEY=your_geoapify_key_here
+TMDB_API_KEY=your_tmdb_key_here
 ```
 
 ### Run Locally
 
 ```bash
-# Development (with auto-restart)
+# Development mode (nodemon)
 npm run dev
 
-# Production
+# Production mode
 npm start
 ```
 
-Server will start at `http://localhost:5000`
+The server will spin up at `http://localhost:5000`.
 
 ---
 
 ## 📡 API Endpoints
 
-### Auth Routes — `/api/auth`
+### 🔑 Authentication (`/api/auth`)
+- `POST /api/auth/register` — Register a new account
+- `POST /api/auth/login` — Login and retrieve JWT token
+- `GET /api/auth/me` — Retrieve current user session details (Auth required)
 
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| POST | `/api/auth/register` | Register a new user | ❌ |
-| POST | `/api/auth/login` | Login & get JWT token | ❌ |
+### 🏠 Rooms (`/api/rooms`)
+- `POST /api/rooms/create` — Generate room code and initialize room (Auth required)
+- `POST /api/rooms/join` — Enter room by 6-character code (Auth required)
+- `GET /api/rooms/:id` — Retrieve room info & member lists (Auth required)
+- `GET /api/rooms/:id/messages` — Retrieve room's chat history (Auth required)
+- `PATCH /api/rooms/:id/activity` — Modify room's current activity (Host only)
+- `POST /api/rooms/:id/leave` — Leave the room lobby (Auth required)
 
-### Health Check
+### 📍 Places (`/api/places` & `/api/user`)
+- `POST /api/places/nearby` — Get nearby places by mood/radius (Solo Explore)
+- `POST /api/user/places/save` — Save place to user favorites profile (Auth required)
+- `GET /api/user/places` — Retrieve all user's saved places (Auth required)
+- `DELETE /api/user/places/:id` — Remove saved place (Auth required)
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/health` | Check server status |
+### 🎬 Movies (`/api/movies`)
+- `POST /api/movies/discover` — Retrieve movie list matching genres/moods/languages (Auth required)
+- `GET /api/movies/providers/:id` — Retrieve watch provider streaming sources (Auth required)
+
+---
+
+## 🔌 Socket.io Events Map
+
+| Event | Direction | Payload | Description |
+|-------|-----------|---------|-------------|
+| `join-room` | Client → Server | `{ roomId }` | Connect user to room room channel |
+| `leave-room` | Client → Server | `{ roomId }` | Leave room channel |
+| `new-message` | Server → Client | Message Object | Broadcast chat message or system notification |
+| `send-message` | Client → Server | `{ roomId, content }` | Send a text message to lobby |
+| `set-activity` | Client → Server | `{ roomId, activity }` | Host toggles the selected activity |
+| `activity-changed` | Server → Client | `{ activity }` | Broadcast activity change |
+| `start-vote` | Client → Server | `{ roomId, item }` | Propose a game, movie, or outing place |
+| `vote-started` | Server → Client | `{ item, endTime, votes, tallies }` | Broadcast voting start countdown |
+| `cast-vote` | Client → Server | `{ roomId, vote }` | Submit Yes / No / Maybe |
+| `vote-update` | Server → Client | `{ votes, tallies }` | Update client progress counts |
+| `end-vote` | Client → Server | `{ roomId }` | Close voting early (Host only) |
+| `vote-result` | Server → Client | `{ item, votes, tallies, result }` | Publish final voting outcome |
+| `get-timer-state` | Client → Server | `{ roomId }` | Synchronize study timer state |
+| `start-timer` | Client → Server | `{ roomId }` | Launch Pomodoro cycle ticks |
+| `pause-timer` | Client → Server | `{ roomId }` | Pause Pomodoro cycle ticks |
+| `reset-timer` | Client → Server | `{ roomId }` | Reset Pomodoro cycle to 25:00 |
+| `timer-update` | Server → Client | `{ timeLeft, duration, isRunning, mode }` | Tick emitter sync payload |
+| `submit-outing-pref` | Client → Server | `{ roomId, pref }` | Send location/distance/mood preference |
+| `outing-state-update` | Server → Client | `{ submissions }` | Update list of users who submitted locations |
+| `find-outing-places` | Client → Server | `{ roomId }` | Host triggers midpoint aggregation |
+| `outing-places-found` | Server → Client | `{ places, midpoint, mood, radius }` | Broadcast calculated places |
 
 ---
 
 ## 🔗 Related
 
-- 🎨 **Frontend Repo**: [where-to-FE](https://github.com/aartisingh07/where-to-FE)
+- 🎨 **Frontend Client**: [where-to-FE](https://github.com/aartisingh07/where-to-FE)
 
 ---
 
