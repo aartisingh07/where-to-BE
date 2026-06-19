@@ -33,6 +33,7 @@ const categoryToLabel = {
   'catering.fast_food':                     'Fast Food',
   'catering.food_court':                    'Food Court',
   'commercial.food_and_drink.bakery':       'Bakery',
+  'leisure.park.garden':                    'Garden',
   'leisure.park':                           'Park',
   'beach':                                  'Beach',
   'natural.water':                          'Lake / Water',
@@ -165,7 +166,7 @@ const getNearbyPlaces = async (req, res, next) => {
         if (mood === 'chill' && !['Park', 'Lake / Water', 'Beach'].includes(label)) {
           return null;
         }
-        if (mood === 'romantic' && !['Scenic Viewpoint', 'Beach'].includes(label)) {
+        if (mood === 'romantic' && !['Scenic Viewpoint', 'Beach', 'Park', 'Garden'].includes(label)) {
           return null;
         }
         if (mood === 'adventure' && !['Mountain Peak', 'Adventure Spot', 'Sports Centre', 'Beach'].includes(label)) {

@@ -33,6 +33,7 @@ const categoryToLabel = {
   'catering.fast_food':                     'Fast Food',
   'catering.food_court':                    'Food Court',
   'commercial.food_and_drink.bakery':       'Bakery',
+  'leisure.park.garden':                    'Garden',
   'leisure.park':                           'Park',
   'beach':                                  'Beach',
   'natural.water':                          'Lake / Water',
@@ -254,7 +255,7 @@ const setupOutingHandler = (socket, io) => {
           if (modeMood === 'chill' && !['Park', 'Lake / Water', 'Beach'].includes(label)) {
             return null;
           }
-          if (modeMood === 'romantic' && !['Scenic Viewpoint', 'Beach'].includes(label)) {
+          if (modeMood === 'romantic' && !['Scenic Viewpoint', 'Beach', 'Park', 'Garden'].includes(label)) {
             return null;
           }
           if (modeMood === 'adventure' && !['Mountain Peak', 'Adventure Spot', 'Sports Centre', 'Beach'].includes(label)) {
