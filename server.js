@@ -17,6 +17,9 @@ const placeRoutes = require('./routes/placeRoutes');
 const userRoutes = require('./routes/userRoutes');
 const roomRoutes = require('./routes/roomRoutes');
 const movieRoutes = require('./routes/movieRoutes');
+const outingPlanRoutes = require('./routes/outingPlanRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const startReminderScheduler = require('./utils/reminderScheduler');
 
 // Connect to MongoDB
 connectDB();
@@ -47,6 +50,8 @@ app.use('/api/places', placeRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/movies', movieRoutes);
+app.use('/api/outing-plans', outingPlanRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -58,6 +63,9 @@ app.use(errorHandler);
 
 // Setup Socket.io
 setupSocket(io);
+
+// Start scheduled reminders checking
+startReminderScheduler(io);
 
 // Make io accessible to routes if needed
 app.set('io', io);
