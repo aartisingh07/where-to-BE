@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const outingPlanSchema = new mongoose.Schema({
+  roomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Room',
+    required: true,
+  },
   roomName: {
     type: String,
     required: true,

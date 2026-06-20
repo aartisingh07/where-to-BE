@@ -103,6 +103,11 @@ const setupSocket = (io) => {
       io.to(roomId).emit('activity-changed', { activity });
     });
 
+    // ── Plan Scheduled ────────────────────────────────────
+    socket.on('plan-scheduled', ({ roomId }) => {
+      io.to(roomId).emit('outing-plan-scheduled');
+    });
+
     // ── Leave Room ─────────────────────────────────────────
     socket.on('leave-room', async ({ roomId }) => {
       await handleLeave(socket, roomId, io);

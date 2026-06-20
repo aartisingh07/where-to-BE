@@ -136,11 +136,6 @@ const leaveRoom = async (req, res, next) => {
       (m) => m.toString() !== req.user.id
     );
 
-    // If host leaves, deactivate room
-    if (room.host.toString() === req.user.id) {
-      room.isActive = false;
-    }
-
     await room.save();
     res.json({ message: 'Left room' });
   } catch (error) {
@@ -148,4 +143,35 @@ const leaveRoom = async (req, res, next) => {
   }
 };
 
-module.exports = { createRoom, joinRoom, getRoom, setActivity, getMessages, leaveRoom };
+// @desc    Delete a room (host only)
+// @route   DELETE /api/rooms/:id
+// @access  Private
+const deleteRoom = async (req, res, next) => {
+  try {
+    const room = await Room.findById(req.params.id);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    if (room.host.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Only the host can delete the room' });
+    }
+
+    room.isActive = false;
+    await room.save();
+
+    res.json({ message: 'Room deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createRoom,
+  joinRoom,
+  getRoom,
+  setActivity,
+  getMessages,
+  leaveRoom,
+  deleteRoom,
+};

@@ -15,6 +15,7 @@ const createPlan = async (req, res, next) => {
     }
 
     const plan = await OutingPlan.create({
+      roomId,
       roomName: room.name || `${req.user.username}'s Room`,
       placeName,
       address,
@@ -45,4 +46,19 @@ const getMyPlans = async (req, res, next) => {
   }
 };
 
-module.exports = { createPlan, getMyPlans };
+const getPlanForRoom = async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const plan = await OutingPlan.findOne({
+      roomId,
+      members: req.user.id,
+      dateTime: { $gte: new Date() },
+    }).sort({ dateTime: 1 });
+
+    res.json(plan);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { createPlan, getMyPlans, getPlanForRoom };
