@@ -80,6 +80,13 @@ const setupSocket = (io) => {
       io.to(roomId).emit('new-message', sysMsg);
       io.to(roomId).emit('room-users-update', getRoomUsers(roomId));
 
+      // Emit current music state to the joining socket
+      const Room = require('../models/Room');
+      const roomDoc = await Room.findById(roomId);
+      if (roomDoc && roomDoc.music) {
+        socket.emit('music-state-changed', roomDoc.music);
+      }
+
       console.log(`👥 ${socket.username} joined room ${roomId}`);
     });
 
@@ -106,6 +113,33 @@ const setupSocket = (io) => {
     // ── Plan Scheduled ────────────────────────────────────
     socket.on('plan-scheduled', ({ roomId }) => {
       io.to(roomId).emit('outing-plan-scheduled');
+    });
+
+    // ── Update Music State ────────────────────────────────
+    socket.on('update-music-state', async ({ roomId, isPlaying, trackIndex, seekTime }) => {
+      try {
+        const Room = require('../models/Room');
+        const room = await Room.findById(roomId);
+        if (!room) return;
+
+        // Verify host
+        if (room.host.toString() !== socket.userId) {
+          console.log(`⚠️ Non-host user ${socket.username} tried to change music state`);
+          return;
+        }
+
+        room.music = {
+          isPlaying,
+          trackIndex,
+          seekTime,
+          lastUpdated: new Date(),
+        };
+        await room.save();
+
+        io.to(roomId).emit('music-state-changed', room.music);
+      } catch (err) {
+        console.error('Error updating room music state:', err);
+      }
     });
 
     // ── Leave Room ─────────────────────────────────────────

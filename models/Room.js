@@ -33,6 +33,24 @@ const roomSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  music: {
+    isPlaying: {
+      type: Boolean,
+      default: false,
+    },
+    trackIndex: {
+      type: Number,
+      default: 0,
+    },
+    seekTime: {
+      type: Number,
+      default: 0,
+    },
+    lastUpdated: {
+      type: Date,
+      default: Date.now,
+    },
+  },
   createdAt: {
     type: Date,
     default: Date.now,
