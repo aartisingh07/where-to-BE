@@ -12,6 +12,7 @@
 - 🎬 **TMDB Discover & Providers** — Advanced movie discover aggregation mapping moods and query parameters, falling back to a local catalog, and fetching watch provider platforms.
 - 📍 **Midpoint Centroid Calculations** — Group coordinates midpoint aggregation to fetch fair nearby destinations using Geoapify Places API.
 - ⏱️ **Synchronized Timers** — Centralized tick emitter managing room-wide Pomodoro timers.
+- 🗺️ **Location Autocomplete & Real Photos** — Debounced autocomplete suggestions dropdown on search input typing, prepending specific geocoded POIs, and parallel place detail queries with MD5 resolution for Wikimedia Commons media.
 
 ---
 
@@ -121,6 +122,7 @@ The server will spin up at `http://localhost:5000`.
 
 ### 📍 Places (`/api/places` & `/api/user`)
 - `POST /api/places/nearby` — Get nearby places by mood/radius (Solo Explore)
+- `GET /api/places/autocomplete` — Get location autocomplete suggestions (Solo Explore)
 - `POST /api/user/places/save` — Save place to user favorites profile (Auth required)
 - `GET /api/user/places` — Retrieve all user's saved places (Auth required)
 - `DELETE /api/user/places/:id` — Remove saved place (Auth required)
