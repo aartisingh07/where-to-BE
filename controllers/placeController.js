@@ -405,4 +405,54 @@ const getNearbyPlaces = async (req, res, next) => {
   }
 };
 
-module.exports = { getNearbyPlaces };
+// @desc    Get autocomplete suggestions for location search
+// @route   GET /api/places/autocomplete
+// @access  Public
+const getAutocompleteSuggestions = async (req, res, next) => {
+  try {
+    const { text } = req.query;
+    if (!text || !text.trim()) {
+      return res.json({ suggestions: [] });
+    }
+
+    const apiKey = process.env.GEOAPIFY_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: 'Places API key not configured on server.' });
+    }
+
+    const response = await axios.get('https://api.geoapify.com/v1/geocode/autocomplete', {
+      params: {
+        text: text.trim(),
+        limit: 5,
+        apiKey,
+      },
+      timeout: 5000,
+    });
+
+    const features = response.data?.features || [];
+    const suggestions = features.map((feature) => {
+      const props = feature.properties;
+      return {
+        placeId: props.place_id,
+        formatted: props.formatted,
+        name: props.name || null,
+        city: props.city || null,
+        state: props.state || null,
+        country: props.country || null,
+        lat: props.lat,
+        lon: props.lon,
+        resultType: props.result_type || null,
+      };
+    });
+
+    res.json({ suggestions });
+  } catch (error) {
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      return res.status(503).json({ message: 'Autocomplete request timed out.' });
+    }
+    next(error);
+  }
+};
+
+module.exports = { getNearbyPlaces, getAutocompleteSuggestions };
+
