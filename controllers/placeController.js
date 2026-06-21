@@ -83,6 +83,7 @@ const getNearbyPlaces = async (req, res, next) => {
     let resolvedLat = lat;
     let resolvedLng = lng;
     let resolvedAddress = '';
+    let prependedPlace = null;
 
     if (locationQuery && locationQuery.trim()) {
       const geocodeResponse = await axios.get('https://api.geoapify.com/v1/geocode/autocomplete', {
@@ -101,6 +102,52 @@ const getNearbyPlaces = async (req, res, next) => {
       resolvedLat = firstResult.properties.lat;
       resolvedLng = firstResult.properties.lon;
       resolvedAddress = firstResult.properties.formatted;
+
+      // Extract specific place details if it is a POI (e.g. amenity, landmark, building, street)
+      const adminTypes = ['city', 'country', 'postcode', 'suburb', 'state', 'county', 'district', 'state_district', 'country_code'];
+      const isSpecificPlace = firstResult.properties.name && !adminTypes.includes(firstResult.properties.result_type);
+      
+      if (isSpecificPlace) {
+        const catStr = firstResult.properties.category || '';
+        const label = getLabel([catStr].filter(Boolean));
+        const categoryLower = label.toLowerCase();
+        
+        let description = 'A great place to visit and explore nearby.';
+        if (categoryLower.includes('cafe')) description = 'A cozy spot for fresh brew, aromatic coffee, and quick bites.';
+        else if (categoryLower.includes('bakery')) description = 'Delicious freshly baked goods, sweet pastries, and bread.';
+        else if (categoryLower.includes('restaurant')) description = 'An excellent dining option offering delicious meals and good service.';
+        else if (categoryLower.includes('fast food')) description = 'Perfect for a quick meal or grab-and-go junk food cravings.';
+        else if (categoryLower.includes('cart') || categoryLower.includes('truck')) description = 'Street-style food vendor serving fresh, local on-the-go treats.';
+        else if (categoryLower.includes('park')) description = 'Beautiful green space ideal for walks, relaxation, and nature vibes.';
+        else if (categoryLower.includes('beach')) description = 'Sandy shoreline with beautiful waves, perfect for sunbathing and swimming.';
+        else if (categoryLower.includes('lake') || categoryLower.includes('water')) description = 'Scenic water body offering quiet views and relaxing surroundings.';
+        else if (categoryLower.includes('mountain') || categoryLower.includes('viewpoint')) description = 'Breathtaking panoramic viewpoints offering stunning skyline landscapes.';
+        else if (categoryLower.includes('library')) description = 'Quiet library spaces packed with books, perfect for reading and studying.';
+        else if (categoryLower.includes('study') || categoryLower.includes('university')) description = 'Inspiring educational space designed for focus and productivity.';
+        else if (categoryLower.includes('sports')) description = 'Recreational centre with sports facilities to keep you active and energised.';
+
+        prependedPlace = {
+          osmId: firstResult.properties.place_id || `${resolvedLat}-${resolvedLng}`,
+          name: firstResult.properties.name,
+          category: label,
+          lat: resolvedLat,
+          lng: resolvedLng,
+          distance: 0,
+          address: resolvedAddress,
+          phone: firstResult.properties.contact?.phone || null,
+          website: firstResult.properties.website || null,
+          photo: null,
+          description,
+          budget: null,
+          travelTimes: {
+            walking: 0,
+            bicycling: 0,
+            driving: 0,
+            recommended: 'walking',
+            recommendedTime: 0,
+          },
+        };
+      }
     } else {
       if (!lat || !lng) {
         return res.status(400).json({ message: 'Location (coordinates or text search) is required' });
@@ -292,9 +339,17 @@ const getNearbyPlaces = async (req, res, next) => {
       .sort((a, b) => a.distance - b.distance)
       .slice(0, 20);
 
+    let finalPlaces = places;
+    if (prependedPlace) {
+      finalPlaces = [
+        prependedPlace,
+        ...places.filter((p) => p.name.toLowerCase() !== prependedPlace.name.toLowerCase())
+      ].slice(0, 20);
+    }
+
     // Fetch details for each place in parallel to get wiki_and_media (real photo)
     const detailedPlaces = await Promise.all(
-      places.map(async (place) => {
+      finalPlaces.map(async (place) => {
         try {
           const detailRes = await axios.get('https://api.geoapify.com/v2/place-details', {
             params: {
