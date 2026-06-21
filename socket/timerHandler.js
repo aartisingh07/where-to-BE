@@ -10,6 +10,8 @@ const setupTimerHandler = (socket, io) => {
         duration: 1500,
         isRunning: false,
         mode: 'work',
+        workDuration: 1500,
+        breakDuration: 300,
       };
     }
     return {
@@ -17,6 +19,8 @@ const setupTimerHandler = (socket, io) => {
       duration: timer.duration,
       isRunning: timer.isRunning,
       mode: timer.mode,
+      workDuration: timer.workDuration || 1500,
+      breakDuration: timer.breakDuration || 300,
     };
   };
 
@@ -38,6 +42,8 @@ const setupTimerHandler = (socket, io) => {
         isRunning: false,
         mode: 'work',
         timerInterval: null,
+        workDuration: 1500,
+        breakDuration: 300,
       };
       roomTimers.set(roomId, timer);
     }
@@ -47,12 +53,7 @@ const setupTimerHandler = (socket, io) => {
     timer.isRunning = true;
 
     // Broadcast immediate start state
-    io.to(roomId).emit('timer-update', {
-      timeLeft: timer.timeLeft,
-      duration: timer.duration,
-      isRunning: true,
-      mode: timer.mode,
-    });
+    io.to(roomId).emit('timer-update', getTimerState(roomId));
 
     // Start interval
     timer.timerInterval = setInterval(() => {
@@ -60,24 +61,21 @@ const setupTimerHandler = (socket, io) => {
 
       if (timer.timeLeft <= 0) {
         // Toggle mode
+        const workSecs = timer.workDuration || 1500;
+        const breakSecs = timer.breakDuration || 300;
         if (timer.mode === 'work') {
           timer.mode = 'break';
-          timer.duration = 300; // 5 minutes break
-          timer.timeLeft = 300;
+          timer.duration = breakSecs;
+          timer.timeLeft = breakSecs;
         } else {
           timer.mode = 'work';
-          timer.duration = 1500; // 25 minutes work
-          timer.timeLeft = 1500;
+          timer.duration = workSecs;
+          timer.timeLeft = workSecs;
         }
         io.to(roomId).emit('timer-cycle-complete', { mode: timer.mode });
       }
 
-      io.to(roomId).emit('timer-update', {
-        timeLeft: timer.timeLeft,
-        duration: timer.duration,
-        isRunning: timer.isRunning,
-        mode: timer.mode,
-      });
+      io.to(roomId).emit('timer-update', getTimerState(roomId));
     }, 1000);
 
     console.log(`⏱️ Timer started in room ${roomId}`);
@@ -95,12 +93,7 @@ const setupTimerHandler = (socket, io) => {
       timer.timerInterval = null;
     }
 
-    io.to(roomId).emit('timer-update', {
-      timeLeft: timer.timeLeft,
-      duration: timer.duration,
-      isRunning: false,
-      mode: timer.mode,
-    });
+    io.to(roomId).emit('timer-update', getTimerState(roomId));
 
     console.log(`⏱️ Timer paused in room ${roomId}`);
   });
@@ -110,11 +103,14 @@ const setupTimerHandler = (socket, io) => {
     if (!roomId) return;
     const timer = roomTimers.get(roomId);
 
+    const workSecs = timer?.workDuration || 1500;
+    const breakSecs = timer?.breakDuration || 300;
+
     if (timer) {
       timer.isRunning = false;
       timer.mode = 'work';
-      timer.duration = 1500;
-      timer.timeLeft = 1500;
+      timer.duration = workSecs;
+      timer.timeLeft = workSecs;
       if (timer.timerInterval) {
         clearInterval(timer.timerInterval);
         timer.timerInterval = null;
@@ -122,13 +118,60 @@ const setupTimerHandler = (socket, io) => {
     }
 
     io.to(roomId).emit('timer-update', {
-      timeLeft: 1500,
-      duration: 1500,
+      timeLeft: workSecs,
+      duration: workSecs,
       isRunning: false,
       mode: 'work',
+      workDuration: workSecs,
+      breakDuration: breakSecs,
     });
 
     console.log(`⏱️ Timer reset in room ${roomId}`);
+  });
+
+  // Set custom timer duration
+  socket.on('set-timer-duration', ({ roomId, workDuration, breakDuration }) => {
+    if (!roomId) return;
+
+    const workSecs = parseInt(workDuration) * 60;
+    const breakSecs = parseInt(breakDuration) * 60;
+
+    if (isNaN(workSecs) || workSecs <= 0 || isNaN(breakSecs) || breakSecs <= 0) return;
+
+    let timer = roomTimers.get(roomId);
+    if (!timer) {
+      timer = {
+        timeLeft: workSecs,
+        duration: workSecs,
+        isRunning: false,
+        mode: 'work',
+        timerInterval: null,
+        workDuration: workSecs,
+        breakDuration: breakSecs,
+      };
+      roomTimers.set(roomId, timer);
+    } else {
+      timer.workDuration = workSecs;
+      timer.breakDuration = breakSecs;
+
+      // Adjust remaining time based on configuration change
+      if (!timer.isRunning) {
+        timer.mode = 'work';
+        timer.duration = workSecs;
+        timer.timeLeft = workSecs;
+      } else {
+        if (timer.mode === 'work') {
+          timer.duration = workSecs;
+          timer.timeLeft = workSecs; // Reset active work countdown to new duration
+        } else {
+          timer.duration = breakSecs;
+          timer.timeLeft = breakSecs; // Reset active break countdown to new duration
+        }
+      }
+    }
+
+    io.to(roomId).emit('timer-update', getTimerState(roomId));
+    console.log(`⏱️ Timer duration updated in room ${roomId}: work=${workDuration}m, break=${breakDuration}m`);
   });
 };
 
