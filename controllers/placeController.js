@@ -74,7 +74,7 @@ const getNearbyPlaces = async (req, res, next) => {
     let resolvedAddress = '';
 
     if (locationQuery && locationQuery.trim()) {
-      const geocodeResponse = await axios.get('https://api.geoapify.com/v1/geocode/search', {
+      const geocodeResponse = await axios.get('https://api.geoapify.com/v1/geocode/autocomplete', {
         params: {
           text: locationQuery.trim(),
           apiKey,
@@ -136,11 +136,18 @@ const getNearbyPlaces = async (req, res, next) => {
     // Set disjoint distance bands to return distinct lists
     let minDistanceKm = 0;
     let maxDistanceKm = radiusMeters / 1000;
-    if (radiusMeters === 5000) {
-      minDistanceKm = 1.5; // Mid-range is 1.5km to 5km
-    } else if (radiusMeters === 10000) {
-      minDistanceKm = 4.0; // Anywhere/distant is 4.0km to 15.0km
-      maxDistanceKm = 15.0; // Expand search area for far places
+
+    const isCustomSearch = !!(locationQuery && locationQuery.trim());
+    if (isCustomSearch) {
+      minDistanceKm = 0;
+      maxDistanceKm = 50.0; // 50km wide radius for custom text search to let them search anything
+    } else {
+      if (radiusMeters === 5000) {
+        minDistanceKm = 1.5; // Mid-range is 1.5km to 5km
+      } else if (radiusMeters === 10000) {
+        minDistanceKm = 4.0; // Anywhere/distant is 4.0km to 15.0km
+        maxDistanceKm = 15.0; // Expand search area for far places
+      }
     }
 
     const response = await axios.get('https://api.geoapify.com/v2/places', {
