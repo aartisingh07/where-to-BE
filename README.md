@@ -13,6 +13,7 @@
 - 📍 **Midpoint Centroid Calculations** — Group coordinates midpoint aggregation to fetch fair nearby destinations using Geoapify Places API.
 - ⏱️ **Synchronized Timers** — Centralized tick emitter managing room-wide Pomodoro timers.
 - 🗺️ **Location Autocomplete & Real Photos** — Debounced autocomplete suggestions dropdown on search input typing, prepending specific geocoded POIs, and parallel place detail queries with MD5 resolution for Wikimedia Commons media.
+- 💬 **Private Direct Messaging (DM)** — Search users, send connection invitations, manage pending requests, and exchange secure real-time messages with unread notification counts, socket updates, and read synchronization.
 
 ---
 
@@ -127,6 +128,17 @@ The server will spin up at `http://localhost:5000`.
 - `GET /api/user/places` — Retrieve all user's saved places (Auth required)
 - `DELETE /api/user/places/:id` — Remove saved place (Auth required)
 
+### 💬 Direct Messages & Chat Requests (`/api/chats`)
+- `GET /api/chats/search` — Search user by username excluding oneself (Auth required)
+- `POST /api/chats/request` — Send chat request to user (Auth required)
+- `POST /api/chats/request/:requestId` — Accept/Reject a chat request (Auth required)
+- `GET /api/chats/active` — Fetch all active conversations with last message snippets (Auth required)
+- `GET /api/chats/requests` — Get incoming pending requests (Auth required)
+- `GET /api/chats/messages/:otherUserId` — Retrieve direct message logs (Auth required)
+- `POST /api/chats/messages/:otherUserId` — Send direct message and trigger socket notifications (Auth required)
+- `GET /api/chats/unread-count` — Retrieve current user's unread private message count (Auth required)
+- `POST /api/chats/mark-read/:senderId` — Mark messages from a specific sender as read (Auth required)
+
 ### 🎬 Movies (`/api/movies`)
 - `POST /api/movies/discover` — Retrieve movie list matching genres/moods/languages (Auth required)
 - `GET /api/movies/providers/:id` — Retrieve watch provider streaming sources (Auth required)
@@ -158,6 +170,8 @@ The server will spin up at `http://localhost:5000`.
 | `outing-state-update` | Server → Client | `{ submissions }` | Update list of users who submitted locations |
 | `find-outing-places` | Client → Server | `{ roomId }` | Host triggers midpoint aggregation |
 | `outing-places-found` | Server → Client | `{ places, midpoint, mood, radius }` | Broadcast calculated places |
+| `direct-message-${receiverId}` | Server → Client | Message Object | Direct message sent to receiver |
+| `unread-count-updated-${receiverId}` | Server → Client | `{ unreadCount }` | Notify receiver of their updated unread DM count |
 
 ---
 
