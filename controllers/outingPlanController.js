@@ -14,6 +14,15 @@ const createPlan = async (req, res, next) => {
       return res.status(403).json({ message: 'Only the host can schedule the outing plan' });
     }
 
+    // Ensure all member IDs (including host and creator) are unique ObjectIds/strings
+    const memberIds = Array.from(
+      new Set([
+        req.user.id,
+        room.host.toString(),
+        ...(room.members || []).map((m) => (m._id || m).toString()),
+      ])
+    );
+
     const plan = await OutingPlan.create({
       roomId,
       roomName: room.name || `${req.user.username}'s Room`,
@@ -24,7 +33,7 @@ const createPlan = async (req, res, next) => {
       mapsLink,
       dateTime,
       creator: req.user.id,
-      members: room.members,
+      members: memberIds,
     });
 
     res.status(201).json(plan);
@@ -35,9 +44,15 @@ const createPlan = async (req, res, next) => {
 
 const getMyPlans = async (req, res, next) => {
   try {
+    // Show future plans and plans that started within the last 6 hours
+    const bufferTime = new Date(Date.now() - 6 * 60 * 60 * 1000);
+
     const plans = await OutingPlan.find({
-      members: req.user.id,
-      dateTime: { $gte: new Date() },
+      $or: [
+        { creator: req.user.id },
+        { members: req.user.id }
+      ],
+      dateTime: { $gte: bufferTime },
     }).sort({ dateTime: 1 });
 
     res.json(plans);
@@ -49,10 +64,15 @@ const getMyPlans = async (req, res, next) => {
 const getPlanForRoom = async (req, res, next) => {
   try {
     const { roomId } = req.params;
+    const bufferTime = new Date(Date.now() - 6 * 60 * 60 * 1000);
+
     const plan = await OutingPlan.findOne({
       roomId,
-      members: req.user.id,
-      dateTime: { $gte: new Date() },
+      $or: [
+        { creator: req.user.id },
+        { members: req.user.id }
+      ],
+      dateTime: { $gte: bufferTime },
     }).sort({ dateTime: 1 });
 
     res.json(plan);
