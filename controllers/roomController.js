@@ -166,6 +166,26 @@ const deleteRoom = async (req, res, next) => {
   }
 };
 
+// @desc    Get all active rooms the user is a member of
+// @route   GET /api/rooms/my-rooms
+// @access  Private
+const getMyRooms = async (req, res, next) => {
+  try {
+    const rooms = await Room.find({
+      members: req.user.id,
+      isActive: true,
+      expiresAt: { $gt: new Date() },
+    })
+      .populate('host', 'username avatar')
+      .populate('members', 'username avatar')
+      .sort({ createdAt: -1 });
+
+    res.json(rooms);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createRoom,
   joinRoom,
@@ -174,4 +194,6 @@ module.exports = {
   getMessages,
   leaveRoom,
   deleteRoom,
+  getMyRooms,
 };
+
