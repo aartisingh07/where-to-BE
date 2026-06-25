@@ -81,4 +81,62 @@ const getPlanForRoom = async (req, res, next) => {
   }
 };
 
-module.exports = { createPlan, getMyPlans, getPlanForRoom };
+const deletePlan = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const plan = await OutingPlan.findById(id);
+    if (!plan) {
+      return res.status(404).json({ message: 'Outing plan not found' });
+    }
+
+    if (plan.creator.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Only the creator of the outing plan can cancel it' });
+    }
+
+    await OutingPlan.findByIdAndDelete(id);
+
+    const Notification = require('../models/Notification');
+
+    const otherMembers = plan.members.filter(
+      (memberId) => memberId.toString() !== req.user.id
+    );
+
+    const io = req.app.get('io');
+
+    if (otherMembers.length > 0) {
+      const notifications = otherMembers.map((memberId) => ({
+        user: memberId,
+        title: '🚨 Outing Plan Cancelled',
+        message: `${req.user.username} has cancelled the outing plan for "${plan.placeName}" scheduled on ${new Date(plan.dateTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}.`,
+        type: 'info',
+      }));
+
+      const savedNotifs = await Notification.insertMany(notifications);
+
+      if (io) {
+        savedNotifs.forEach((notif) => {
+          io.emit(`notification-${notif.user.toString()}`, {
+            _id: notif._id,
+            user: notif.user,
+            title: notif.title,
+            message: notif.message,
+            type: notif.type,
+            isRead: notif.isRead,
+            createdAt: notif.createdAt,
+          });
+        });
+      }
+    }
+
+    if (io) {
+      io.to(plan.roomId.toString()).emit('outing-plan-cancelled');
+    }
+
+    res.json({ message: 'Outing plan cancelled successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { createPlan, getMyPlans, getPlanForRoom, deletePlan };
+
