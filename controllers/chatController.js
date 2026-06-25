@@ -225,13 +225,21 @@ const getActiveChats = async (req, res, next) => {
         ]
       }).sort({ createdAt: -1 });
 
+      // Count unread messages from this specific user
+      const unreadCount = await DirectMessage.countDocuments({
+        sender: otherUser._id,
+        receiver: req.user.id,
+        isRead: false
+      });
+
       activeChats.push({
         user: otherUser,
         lastMessage: lastMsg ? {
           content: lastMsg.content,
           createdAt: lastMsg.createdAt,
           sender: lastMsg.sender
-        } : null
+        } : null,
+        unreadCount
       });
     }
 
