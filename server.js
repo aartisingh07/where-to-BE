@@ -20,6 +20,7 @@ const movieRoutes = require('./routes/movieRoutes');
 const outingPlanRoutes = require('./routes/outingPlanRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const memoryRoutes = require('./routes/memoryRoutes');
 const startReminderScheduler = require('./utils/reminderScheduler');
 
 // Connect to MongoDB
@@ -54,6 +55,7 @@ app.use('/api/movies', movieRoutes);
 app.use('/api/outing-plans', outingPlanRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chats', chatRoutes);
+app.use('/api/memories', memoryRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

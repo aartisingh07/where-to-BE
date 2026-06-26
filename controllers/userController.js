@@ -107,5 +107,24 @@ const deleteAccount = async (req, res, next) => {
   }
 };
 
-module.exports = { savePlace, getSavedPlaces, deleteSavedPlace, deleteAccount };
+const getUserProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id).select('username avatar createdAt');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const savedPlacesCount = await SavedPlace.countDocuments({ user: user._id });
+    res.json({
+      _id: user._id,
+      username: user.username,
+      avatar: user.avatar,
+      createdAt: user.createdAt,
+      savedPlacesCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { savePlace, getSavedPlaces, deleteSavedPlace, deleteAccount, getUserProfile };
 
