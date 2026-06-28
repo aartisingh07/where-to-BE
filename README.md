@@ -147,6 +147,9 @@ The server will spin up at `http://localhost:5000`.
 - `POST /api/chats/messages/:otherUserId` — Send direct message and trigger socket notifications (Auth required)
 - `GET /api/chats/unread-count` — Retrieve current user's unread private message count (Auth required)
 - `POST /api/chats/mark-read/:senderId` — Mark messages from a specific sender as read (Auth required)
+- `PUT /api/chats/message/:messageId` — Edit a direct message within 30 minutes (Auth required)
+- `DELETE /api/chats/message/:messageId` — Delete a direct message (Auth required)
+- `DELETE /api/chats/conversation/:otherUserId` — Delete/clear entire conversation history with a user (Auth required)
 
 ### 📸 Memories (`/api/memories`)
 - `POST /api/memories` — Upload memory photo with caption and visibility (Auth required)
@@ -168,6 +171,10 @@ The server will spin up at `http://localhost:5000`.
 | `leave-room` | Client → Server | `{ roomId }` | Leave room channel |
 | `new-message` | Server → Client | Message Object | Broadcast chat message or system notification |
 | `send-message` | Client → Server | `{ roomId, content }` | Send a text message to lobby |
+| `edit-message` | Client → Server | `{ roomId, messageId, content }` | Edit a room message (within 30 minutes) |
+| `message-updated` | Server → Client | `{ messageId, content, isEdited: true }` | Broadcast updated room message |
+| `delete-message` | Client → Server | `{ roomId, messageId }` | Delete a room message |
+| `message-deleted` | Server → Client | `{ messageId }` | Broadcast room message deletion |
 | `set-activity` | Client → Server | `{ roomId, activity }` | Host toggles the selected activity |
 | `activity-changed` | Server → Client | `{ activity }` | Broadcast activity change |
 | `start-vote` | Client → Server | `{ roomId, item }` | Propose a game, movie, or outing place |
@@ -187,6 +194,9 @@ The server will spin up at `http://localhost:5000`.
 | `outing-places-found` | Server → Client | `{ places, midpoint, mood, radius }` | Broadcast calculated places |
 | `direct-message-${receiverId}` | Server → Client | Message Object | Direct message sent to receiver |
 | `unread-count-updated-${receiverId}` | Server → Client | `{ unreadCount }` | Notify receiver of their updated unread DM count |
+| `direct-message-updated-${userId}` | Server → Client | `{ messageId, content, isEdited: true, sender, receiver }` | Notify users of direct message edit |
+| `direct-message-deleted-${userId}` | Server → Client | `{ messageId, sender, receiver }` | Notify users of direct message deletion |
+| `direct-conversation-deleted-${userId}` | Server → Client | `{ otherUserId }` | Notify user of cleared DM conversation history |
 
 ---
 

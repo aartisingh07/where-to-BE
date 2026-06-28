@@ -397,6 +397,123 @@ const markMessagesAsRead = async (req, res, next) => {
   }
 };
 
+// @desc    Edit a direct message (within 30 minutes of sending)
+// @route   PUT /api/chats/message/:messageId
+// @access  Private
+const editDirectMessage = async (req, res, next) => {
+  try {
+    const { messageId } = req.params;
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: 'Content is required' });
+    }
+
+    const message = await DirectMessage.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    if (message.sender.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'You are not authorized to edit this message' });
+    }
+
+    // Check time constraint (30 minutes = 30 * 60 * 1000 ms)
+    const timeDiff = Date.now() - new Date(message.createdAt).getTime();
+    if (timeDiff > 30 * 60 * 1000) {
+      return res.status(400).json({ message: 'Message can only be edited within 30 minutes of sending' });
+    }
+
+    message.content = content.trim();
+    message.isEdited = true;
+    await message.save();
+
+    // Emit socket event to both sender and receiver
+    const io = req.app.get('io');
+    if (io) {
+      const payload = {
+        messageId: message._id.toString(),
+        content: message.content,
+        isEdited: true,
+        sender: message.sender.toString(),
+        receiver: message.receiver.toString()
+      };
+      io.emit(`direct-message-updated-${message.receiver.toString()}`, payload);
+      io.emit(`direct-message-updated-${message.sender.toString()}`, payload);
+    }
+
+    res.json(message);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete a direct message
+// @route   DELETE /api/chats/message/:messageId
+// @access  Private
+const deleteDirectMessage = async (req, res, next) => {
+  try {
+    const { messageId } = req.params;
+
+    const message = await DirectMessage.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    if (message.sender.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'You are not authorized to delete this message' });
+    }
+
+    await message.deleteOne();
+
+    // Emit socket event to both sender and receiver
+    const io = req.app.get('io');
+    if (io) {
+      const payload = {
+        messageId: message._id.toString(),
+        sender: message.sender.toString(),
+        receiver: message.receiver.toString()
+      };
+      io.emit(`direct-message-deleted-${message.receiver.toString()}`, payload);
+      io.emit(`direct-message-deleted-${message.sender.toString()}`, payload);
+      io.emit(`unread-count-updated-${message.receiver.toString()}`);
+    }
+
+    res.json({ message: 'Message deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete/clear entire conversation history with a user
+// @route   DELETE /api/chats/conversation/:otherUserId
+// @access  Private
+const deleteConversation = async (req, res, next) => {
+  try {
+    const { otherUserId } = req.params;
+
+    // Delete all direct messages between req.user.id and otherUserId
+    await DirectMessage.deleteMany({
+      $or: [
+        { sender: req.user.id, receiver: otherUserId },
+        { sender: otherUserId, receiver: req.user.id }
+      ]
+    });
+
+    // Emit socket event to notify both users that the conversation has been cleared
+    const io = req.app.get('io');
+    if (io) {
+      io.emit(`direct-conversation-deleted-${otherUserId}`, { otherUserId: req.user.id });
+      io.emit(`direct-conversation-deleted-${req.user.id}`, { otherUserId });
+      io.emit(`unread-count-updated-${req.user.id}`);
+    }
+
+    res.json({ message: 'Conversation history cleared successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   searchUsers,
   sendChatRequest,
@@ -406,5 +523,8 @@ module.exports = {
   getMessageHistory,
   sendDirectMessage,
   getUnreadCount,
-  markMessagesAsRead
+  markMessagesAsRead,
+  editDirectMessage,
+  deleteDirectMessage,
+  deleteConversation
 };

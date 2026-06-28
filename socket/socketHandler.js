@@ -99,6 +99,52 @@ const setupSocket = (io) => {
       io.to(roomId).emit('new-message', message);
     });
 
+    // ── Edit Message ───────────────────────────────────────
+    socket.on('edit-message', async ({ roomId, messageId, content }) => {
+      if (!content?.trim()) return;
+
+      try {
+        const message = await Message.findById(messageId);
+        if (!message) return;
+
+        if (message.sender.toString() !== socket.userId) return;
+
+        // Check 30 minutes constraint
+        const timeDiff = Date.now() - new Date(message.createdAt).getTime();
+        if (timeDiff > 30 * 60 * 1000) return;
+
+        message.content = content.trim();
+        message.isEdited = true;
+        await message.save();
+
+        io.to(roomId).emit('message-updated', {
+          messageId: message._id.toString(),
+          content: message.content,
+          isEdited: true
+        });
+      } catch (err) {
+        console.error('Failed to edit room message:', err);
+      }
+    });
+
+    // ── Delete Message ─────────────────────────────────────
+    socket.on('delete-message', async ({ roomId, messageId }) => {
+      try {
+        const message = await Message.findById(messageId);
+        if (!message) return;
+
+        if (message.sender.toString() !== socket.userId) return;
+
+        await message.deleteOne();
+
+        io.to(roomId).emit('message-deleted', {
+          messageId: message._id.toString()
+        });
+      } catch (err) {
+        console.error('Failed to delete room message:', err);
+      }
+    });
+
     // ── Activity Change ────────────────────────────────────
     socket.on('set-activity', ({ roomId, activity }) => {
       io.to(roomId).emit('activity-changed', { activity });

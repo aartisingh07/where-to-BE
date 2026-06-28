@@ -24,6 +24,10 @@ const messageSchema = new mongoose.Schema({
     enum: ['text', 'system'],
     default: 'text',
   },
+  isEdited: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
